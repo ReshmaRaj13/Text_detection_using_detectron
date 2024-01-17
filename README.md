@@ -5,3 +5,6 @@ This project is useful for signboard translation. The dataset of this project ha
 
 # Sample output
 ![](https://github.com/ReshmaRaj13/Text_detection_using_detectron/blob/main/output1.gif)
+
+![](https://github.com/ReshmaRaj13/Text_detection_using_detectron/blob/main/output2.gif)
+
