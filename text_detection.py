@@ -9,43 +9,36 @@ Original file is located at
 
 !python -m pip install 'git+https://github.com/facebookresearch/detectron2.git'
 
+# import libraries
 import torch, detectron2
 !nvcc --version
 TORCH_VERSION = ".".join(torch.__version__.split(".")[:2])
 CUDA_VERSION = torch.__version__.split("+")[-1]
 print("torch: ", TORCH_VERSION, "; cuda: ", CUDA_VERSION)
 print("detectron2:", detectron2.__version__)
-
 import os
 import random
 import numpy as np
 import matplotlib.pyplot as plt
 from detectron2.utils.logger import setup_logger
-setup_logger()
-import cv2
 from detectron2 import model_zoo
 from detectron2.engine import DefaultPredictor
 from detectron2.config import get_cfg
 from detectron2.utils.visualizer import Visualizer
 from detectron2.data import MetadataCatalog, DatasetCatalog
-
 from detectron2.engine import DefaultTrainer
-from detectron2.engine import DefaultPredictor
 from detectron2.evaluation import COCOEvaluator, inference_on_dataset, LVISEvaluator
 from detectron2.data import build_detection_test_loader
 from detectron2.utils.visualizer import ColorMode
-
-from detectron2.engine import DefaultTrainer
-from detectron2.engine import DefaultPredictor
-from detectron2.evaluation import COCOEvaluator, inference_on_dataset, LVISEvaluator
-from PIL import Image
-
-!unzip /content/text_detection_dataset.zip
-
 from google.colab.patches import cv2_imshow
-
 from detectron2.structures import BoxMode
 
+
+# unzip the dataset
+!unzip /content/text_detection_dataset.zip
+
+
+# function to register dataset
 dataset_dicts = []
 def get_text_dicts(img_dir, ann_dir):
   for idx, file in enumerate(os.listdir(ann_dir)):
@@ -97,18 +90,14 @@ text_metadata = MetadataCatalog.get("text_train")
 
 dataset_dicts = get_text_dicts("/content/" + "train"+ "/Image", "/content/" + "train" + "/Annotation")
 
-for d in random.sample(dataset_dicts, 1):
-    img = cv2.imread(d["file_name"])
-    visualizer = Visualizer(img[:, :, ::-1],  scale=0.5)
-    out = visualizer.draw_dataset_dict(d)
-    cv2_imshow(out.get_image()[:, :, ::-1]);
-
+# to visualize the data
 for d in random.sample(dataset_dicts, 3):
     img = cv2.imread(d["file_name"])
     visualizer = Visualizer(img[:, :, ::-1], metadata=text_metadata, scale=0.5)
     out = visualizer.draw_dataset_dict(d)
     cv2_imshow(out.get_image()[:, :, ::-1])
 
+# train the model
 cfg = get_cfg()
 cfg.merge_from_file(model_zoo.get_config_file("COCO-Detection/faster_rcnn_X_101_32x8d_FPN_3x.yaml"))
 cfg.DATASETS.TRAIN = ("text_train",)
@@ -122,11 +111,9 @@ cfg.SOLVER.MAX_ITER = 300
 cfg.MODEL.ROI_HEADS.BATCH_SIZE_PER_IMAGE = 128 # 512
 cfg.MODEL.ROI_HEADS.NUM_CLASSES = len(MetadataCatalog.get("text_train").thing_classes)
 cfg.SOLVER.STEPS = (20500, )
-
 os.makedirs(cfg.OUTPUT_DIR, exist_ok=True)
 trainer = DefaultTrainer(cfg)
 trainer.resume_or_load(resume=False)
-
 import time as t
 s1 = t.time()
 try:
@@ -136,54 +123,13 @@ except:
 s2 = t.time()
 print(s2-s1)
 
-from detectron2.config import get_cfg
-from detectron2.engine import DefaultPredictor
-from detectron2 import model_zoo
-import cv2
-
-
-# Load config from a config file
-cfg = get_cfg()
-cfg.merge_from_file(model_zoo.get_config_file('COCO-Detection/retinanet_R_101_FPN_3x.yaml'))
-cfg.MODEL.WEIGHTS = '/content/output/model_final.pth'
-cfg.MODEL.DEVICE = 'cpu'
-
-# Create predictor instance
-predictor = DefaultPredictor(cfg)
-
-# Load image
-image = cv2.imread("/content/test/Image/39.jpg")
-
-# Perform prediction
-outputs = predictor(image)
-
-threshold = 0.5
-
-# Display predictions
-preds = outputs["instances"].pred_classes.tolist()
-scores = outputs["instances"].scores.tolist()
-bboxes = outputs["instances"].pred_boxes
-
-for j, bbox in enumerate(bboxes):
-    bbox = bbox.tolist()
-
-    score = scores[j]
-    pred = preds[j]
-
-    if score > threshold:
-        x1, y1, x2, y2 = [int(i) for i in bbox]
-
-        cv2.rectangle(image, (x1, y1), (x2, y2), (0, 0, 255), 5)
-
-cv2_imshow(image)
-cv2.waitKey(0)
-
+# predict the data
 cfg.MODEL.WEIGHTS = os.path.join(cfg.OUTPUT_DIR, "model_final.pth")  # path to the model we just trained
 cfg.MODEL.ROI_HEADS.SCORE_THRESH_TEST = 0.7   # set a custom testing threshold
 predictor = DefaultPredictor(cfg)
 
 im = cv2.imread("/content/val/Image/18.jpg")
-outputs = predictor(im)  # format is documented at https://detectron2.readthedocs.io/tutorials/models.html#model-output-format
+outputs = predictor(im) \
 v = Visualizer(im[:, :, ::-1],
                    metadata=text_metadata,
                    scale=0.5)
